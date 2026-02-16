@@ -26,7 +26,7 @@ export const ProjectStatusBadge = ({ status }: ProjectStatusBadgeProps) => {
         </Badge>
       )
     case 'completed':
-      return <Badge variant="secondary">Завершен</Badge>
+      return <Badge variant="outline">Завершен</Badge>
     default:
       return <Badge variant="default">{status}</Badge>
   }

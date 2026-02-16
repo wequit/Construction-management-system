@@ -4,11 +4,15 @@ import { DashboardPage } from '../pages/ui/dashboard/dashboard-page'
 import { ProjectPage } from '../pages/ui/projects/project-page'
 import { NotificationsPage } from '../pages/ui/notifications/notifications-page'
 import { ProfilePage } from '../pages/ui/profile/profile-page'
+import { LoginPage } from '../pages/ui/login/login-page'
+import DocumentRoadmap from '../DocumentRoadmap'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/roadmap/:projectId?" element={<DocumentRoadmap />} />
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectPage />} />

@@ -40,11 +40,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
   String? webUrl;
   bool useFallback = false;
 
-  static const bool isDevelopmentMode = true;
+  static const bool isDevelopmentMode = false;
   
-  // URL вашего сервера
   static const String PRODUCTION_URL = 'https://test-abs.tms.kg/';
-  // Fallback на локальную версию
   static const String FALLBACK_URL = 'file:///android_asset/flutter_assets/assets/web/index.html';
 
   @override
@@ -54,39 +52,52 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   Future<void> _determineWebUrl() async {
-    if (kDebugMode && isDevelopmentMode) {
-      // Development: всегда локальный dev server
+    if (isDevelopmentMode) {
+      const devUrl = 'http://192.168.1.8:5173/';
       setState(() {
-        webUrl = 'http://192.168.1.168:5173';
+        webUrl = devUrl;
+        useFallback = false;
       });
+      if (kDebugMode) {
+        print('🔧 Dev режим: загружаем с $devUrl');
+        print('💡 Убедитесь, что dev сервер запущен: cd react-app && npm run dev');
+      }
       return;
     }
 
-    // Production: проверяем доступность сервера
     try {
       final response = await http
           .head(Uri.parse(PRODUCTION_URL))
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 5));
       
       if (response.statusCode == 200) {
-        // Сервер доступен - используем его
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
         setState(() {
-          webUrl = PRODUCTION_URL;
+          webUrl = '$PRODUCTION_URL?v=$timestamp';
           useFallback = false;
         });
         if (kDebugMode) {
-          print('✅ Сервер доступен, загружаем с ${PRODUCTION_URL}');
+          print('✅ Production сервер доступен, загружаем с ${PRODUCTION_URL}');
         }
       } else {
-        // Сервер вернул ошибку - используем fallback
         _useFallback();
       }
     } catch (e) {
-      // Ошибка подключения - используем fallback
       if (kDebugMode) {
-        print('⚠️ Сервер недоступен, используем локальную версию: $e');
+        print('⚠️ Production сервер недоступен, используем локальную версию: $e');
       }
       _useFallback();
+    }
+  }
+
+  Future<void> _reloadWebView() async {
+    if (webViewController != null && !useFallback) {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await webViewController!.loadUrl(
+        urlRequest: URLRequest(
+          url: WebUri('$PRODUCTION_URL?v=$timestamp'),
+        ),
+      );
     }
   }
 
@@ -99,24 +110,44 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Показываем загрузку, пока определяем URL
     if (webUrl == null) {
       return Scaffold(
+        backgroundColor: Color(0xFF0b1020), // Тёмный фон
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
+              CircularProgressIndicator(color: Colors.white),
               SizedBox(height: 16),
-              Text('Проверка подключения...'),
+              Text(
+                'Проверка подключения...',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),
       );
     }
 
-    return Scaffold(
-      body: Column(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        
+        if (webViewController != null) {
+          final canGoBack = await webViewController!.canGoBack();
+          if (canGoBack) {
+            await webViewController!.goBack();
+            return;
+          }
+        }
+        
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        body: Column(
         children: [
           if (useFallback)
             Container(
@@ -182,33 +213,60 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   this.progress = progress / 100;
                 });
               },
-              onLoadStop: (controller, url) {
+              onLoadStop: (controller, url) async {
                 setState(() {
                   isLoading = false;
                   progress = 1.0;
                 });
+                if (!useFallback && url.toString().startsWith('https://')) {
+                  try {
+                    await controller.clearCache();
+                    if (kDebugMode) {
+                      print(' Кеш WebView очищен для следующего обновления');
+                    }
+                  } catch (e) {
+                    if (kDebugMode) {
+                      print(' Ошибка при очистке кеша: $e');
+                    }
+                  }
+                }
               },
               onLoadError: (controller, url, code, message) {
-                print('❌ Ошибка загрузки: $message');
+                if (kDebugMode) {
+                  print(' Ошибка загрузки: $message (URL: $url)');
+                }
                 
-                // Если ошибка при загрузке с сервера - переключаемся на fallback
-                if (!useFallback && url.toString().startsWith('https://')) {
+                // Если ошибка при загрузке с dev сервера (localhost или IP)
+                if (url.toString().contains(':5173')) {
                   if (kDebugMode) {
-                    print('⚠️ Ошибка загрузки с сервера, переключаемся на локальную версию');
+                    print(' Dev сервер недоступен, пробуем production URL');
+                  }
+                  final timestamp = DateTime.now().millisecondsSinceEpoch;
+                  controller.loadUrl(
+                    urlRequest: URLRequest(
+                      url: WebUri('$PRODUCTION_URL?v=$timestamp'),
+                    ),
+                  );
+                  return;
+                }
+                
+                if (!useFallback && (url.toString().startsWith('https://') || url.toString().startsWith('http://'))) {
+                  if (kDebugMode) {
+                    print(' Ошибка загрузки с сервера, переключаемся на локальную версию');
                   }
                   _useFallback();
-                  // Перезагружаем с локальной версией
                   controller.loadUrl(urlRequest: URLRequest(url: WebUri(FALLBACK_URL)));
                 }
               },
               onConsoleMessage: (controller, consoleMessage) {
                 if (kDebugMode) {
-                  print('🖥️ Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
+                  print(' Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
                 }
               },
             ),
           ),
         ],
+      ),
       ),
     );
   }

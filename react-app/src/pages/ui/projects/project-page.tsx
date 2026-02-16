@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import { mockProjects } from "@/entities/project"
 import type { Project } from "@/entities/project"
 import { ProjectHeader } from "@/widgets/project-header"
@@ -6,6 +7,7 @@ import { ProjectList } from "@/widgets/project-list"
 import { CreateProjectButton } from "@/features/create-project"
 
 export const ProjectPage = () => {
+  const navigate = useNavigate()
   const [searchValue, setSearchValue] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("")
@@ -27,7 +29,7 @@ export const ProjectPage = () => {
   }, [searchValue, statusFilter, departmentFilter, workTypeFilter])
 
   const handleOpenProject = (project: Project) => {
-    console.log("Открыть проек", project)
+    navigate(`/roadmap/${project.id}`)
   }
 
   const handleDeleteProject = (project: Project) => {

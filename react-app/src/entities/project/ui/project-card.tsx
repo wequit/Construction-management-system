@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 import { ExternalLink, Trash2 } from "lucide-react"
 import type { Project } from "../model/types"
 import { ProjectStatusBadge } from "./project-status-badge"
@@ -13,11 +12,7 @@ interface ProjectCardProps {
 export const ProjectCard = ({ project, onOpen, onDelete }: ProjectCardProps) => {
   return (
     <Card 
-      className={cn(
-        "bg-[#0f1729] border-gray-800 overflow-hidden",
-        "hover:border-gray-700 transition-colors",
-        "h-full flex flex-col"
-      )}
+      className="bg-[#0f1729] border-gray-800 overflow-hidden hover:border-gray-700 transition-colors h-full flex flex-col"
     >
       <CardHeader className="pb-3 md:pb-4">
         <div className="flex items-start justify-between">

@@ -25,7 +25,6 @@ export const ProjectHeader = ({
   return (
     <div 
       className="bg-[#0f1729] border-b border-gray-800 p-3 md:p-4 sticky top-0 z-10"
-      style={{ paddingTop: 'max(2.5rem' }}
     >
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
         <h1 className="text-xl md:text-2xl font-bold hidden md:block">Проекты</h1>
